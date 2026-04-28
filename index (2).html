@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBELIK — Platform Workflow Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300;1,9..144,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --forest: #1A3A2A;
+  --forest-deep: #0f2019;
+  --mid: #2E6B4F;
+  --light: #4A9E76;
+  --pale: #7BC9A0;
+  --cream: #F5F2EC;
+  --warm: #EAE5DA;
+  --amber: #D4A843;
+  --amber-d: #A8832E;
+  --red: #C0392B;
+  --blue: #2D6A9F;
+  --blue-light: #E8F0FB;
+  --purple: #6B3FA0;
+  --purple-light: #F0E8FB;
+  --teal: #1A7A7A;
+  --teal-light: #E0F5F5;
+  --gold: #C9973A;
+  --border: rgba(26,58,42,0.15);
+  --border-cream: rgba(245,242,236,0.15);
+}
+
+body {
+  background: var(--forest-deep);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--cream);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* NOISE TEXTURE OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* HEADER */
+.header {
+  position: relative;
+  z-index: 10;
+  padding: 28px 48px 24px;
+  border-bottom: 0.5px solid var(--border-cream);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  background: linear-gradient(180deg, rgba(15,32,25,0.9) 0%, transparent 100%);
+}
+.header-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.brand-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--light);
+}
+.brand-name {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  font-weight: 300;
+  color: var(--cream);
+  line-height: 1;
+}
+.brand-name span { font-style: italic; color: var(--pale); }
+.header-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: rgba(245,242,236,0.35);
+  text-align: right;
+  line-height: 1.6;
+}
+
+/* ACTOR LEGEND */
+.legend {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 20px 48px;
+  border-bottom: 0.5px solid var(--border-cream);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 0.5px solid;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: default;
+  transition: all 0.2s;
+}
+.legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.l-owner   { border-color: var(--amber);  color: var(--amber);  }
+.l-owner .legend-dot { background: var(--amber); }
+.l-arch    { border-color: var(--blue);   color: #7BB8F0; }
+.l-arch .legend-dot { background: #7BB8F0; }
+.l-contr   { border-color: var(--light);  color: var(--light); }
+.l-contr .legend-dot { background: var(--light); }
+.l-vendor  { border-color: var(--purple); color: #B07BF0; }
+.l-vendor .legend-dot { background: #B07BF0; }
+.l-obelik  { border-color: var(--teal);   color: #5CC8C8; }
+.l-obelik .legend-dot { background: #5CC8C8; }
+
+/* MAIN CANVAS */
+.canvas {
+  position: relative;
+  z-index: 5;
+  padding: 40px 32px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* PHASE LABELS */
+.phase-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(245,242,236,0.3);
+  margin-bottom: 16px;
+  padding-left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.phase-label::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: rgba(245,242,236,0.08);
+}
+
+/* PHASE ROWS */
+.phase-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+/* NODE BASE */
+.node {
+  border-radius: 12px;
+  padding: 16px 18px;
+  border: 0.5px solid;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  flex: 1;
+  min-width: 160px;
+}
+.node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+}
+.node-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  opacity: 0.5;
+  margin-bottom: 6px;
+}
+.node-title {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 5px;
+}
+.node-sub {
+  font-size: 11px;
+  opacity: 0.6;
+  line-height: 1.4;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+}
+.node-actor {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+/* NODE COLOUR THEMES */
+.n-owner {
+  background: rgba(212,168,67,0.08);
+  border-color: rgba(212,168,67,0.35);
+}
+.n-owner .node-title { color: #F5E4A8; }
+.n-owner .node-actor { background: rgba(212,168,67,0.15); color: var(--amber); }
+
+.n-arch {
+  background: rgba(45,106,159,0.1);
+  border-color: rgba(45,106,159,0.4);
+}
+.n-arch .node-title { color: #A8CFF5; }
+.n-arch .node-actor { background: rgba(45,106,159,0.2); color: #7BB8F0; }
+
+.n-contr {
+  background: rgba(74,158,118,0.08);
+  border-color: rgba(74,158,118,0.35);
+}
+.n-contr .node-title { color: #A8E4C4; }
+.n-contr .node-actor { background: rgba(74,158,118,0.15); color: var(--light); }
+
+.n-vendor {
+  background: rgba(107,63,160,0.1);
+  border-color: rgba(107,63,160,0.4);
+}
+.n-vendor .node-title { color: #CBA8F5; }
+.n-vendor .node-actor { background: rgba(107,63,160,0.2); color: #B07BF0; }
+
+.n-obelik {
+  background: rgba(26,122,122,0.1);
+  border-color: rgba(26,122,122,0.4);
+}
+.n-obelik .node-title { color: #A8E8E8; }
+.n-obelik .node-actor { background: rgba(26,122,122,0.2); color: #5CC8C8; }
+
+.n-platform {
+  background: rgba(245,242,236,0.04);
+  border-color: rgba(245,242,236,0.1);
+}
+.n-platform .node-title { color: var(--cream); }
+
+.n-rejected {
+  background: rgba(192,57,43,0.08);
+  border-color: rgba(192,57,43,0.3);
+  opacity: 0.75;
+}
+.n-rejected .node-title { color: #F5A8A0; }
+.n-rejected .node-actor { background: rgba(192,57,43,0.15); color: #F5A8A0; }
+
+/* NODE SIZES */
+.node-sm { min-width: 140px; max-width: 180px; flex: 0 0 auto; }
+.node-md { min-width: 200px; flex: 1; }
+.node-lg { min-width: 260px; flex: 2; }
+.node-xl { flex: 3; }
+
+/* CONNECTOR ARROWS */
+.arrows-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+}
+.arrow-down {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 160px;
+}
+.arrow-line {
+  width: 1px;
+  height: 20px;
+  background: linear-gradient(180deg,
+    rgba(245,242,236,0.15) 0%,
+    rgba(245,242,236,0.4) 100%);
+}
+.arrow-head {
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid rgba(245,242,236,0.35);
+}
+.arrow-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: rgba(245,242,236,0.3);
+  text-align: center;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+/* HORIZONTAL ARROWS */
+.h-arrow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 4px;
+}
+.h-line {
+  height: 1px;
+  background: linear-gradient(90deg,
+    rgba(245,242,236,0.15),
+    rgba(245,242,236,0.4));
+  flex: 1;
+}
+.h-head {
+  width: 0; height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid rgba(245,242,236,0.35);
+}
+
+/* BIDIRECTIONAL ARROW */
+.bi-arrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(245,242,236,0.3);
+  text-transform: uppercase;
+}
+
+/* SECTION DIVIDER */
+.section-divider {
+  margin: 28px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.divider-line {
+  flex: 1;
+  height: 0.5px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(245,242,236,0.12) 20%,
+    rgba(245,242,236,0.12) 80%,
+    transparent);
+}
+.divider-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(245,242,236,0.25);
+  padding: 4px 12px;
+  border: 0.5px solid rgba(245,242,236,0.1);
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* SITE OPS LAYER */
+.site-ops-frame {
+  border: 0.5px solid rgba(74,158,118,0.2);
+  border-radius: 16px;
+  padding: 20px;
+  background: rgba(74,158,118,0.03);
+  margin-bottom: 8px;
+  position: relative;
+}
+.site-ops-label {
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--light);
+  background: var(--forest-deep);
+  padding: 0 8px;
+}
+
+/* CONTRACT ADMIN LAYER */
+.contract-frame {
+  border: 0.5px solid rgba(45,106,159,0.25);
+  border-radius: 16px;
+  padding: 20px;
+  background: rgba(45,106,159,0.04);
+  margin-bottom: 8px;
+  position: relative;
+}
+.contract-label {
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #7BB8F0;
+  background: var(--forest-deep);
+  padding: 0 8px;
+}
+
+/* PAYMENT FLOWS */
+.payment-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(212,168,67,0.05);
+  border: 0.5px solid rgba(212,168,67,0.2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.pf-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 100px;
+}
+.pf-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+.pf-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--amber);
+  text-transform: uppercase;
+}
+.pf-sub {
+  font-size: 9px;
+  color: rgba(245,242,236,0.4);
+  text-align: center;
+  line-height: 1.3;
+}
+.pf-arrow-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 8px;
+  gap: 2px;
+}
+.pf-arrow-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  color: rgba(212,168,67,0.5);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,20,15,0.85);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #0f2019;
+  border: 0.5px solid rgba(245,242,236,0.12);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 520px;
+  width: 90%;
+  position: relative;
+  animation: modalIn 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(245,242,236,0.06);
+  border: none;
+  color: var(--cream);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { background: rgba(245,242,236,0.12); }
+.modal-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  margin-bottom: 8px;
+}
+.modal-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--cream);
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+.modal-title em { font-style: italic; color: var(--pale); }
+.modal-actor {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+.modal-divider {
+  height: 0.5px;
+  background: rgba(245,242,236,0.08);
+  margin: 16px 0;
+}
+.modal-body { font-size: 13px; line-height: 1.65; color: rgba(245,242,236,0.7); }
+.modal-steps { list-style: none; padding: 0; margin: 12px 0 0; }
+.modal-steps li {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid rgba(245,242,236,0.06);
+  font-size: 12.5px;
+  color: rgba(245,242,236,0.65);
+  line-height: 1.4;
+}
+.modal-steps li:last-child { border-bottom: none; }
+.step-n {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  margin-top: 1px;
+}
+.modal-tags {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px;
+}
+.modal-tag-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+}
+
+/* FOOTER */
+.footer {
+  position: relative;
+  z-index: 10;
+  padding: 20px 48px;
+  border-top: 0.5px solid var(--border-cream);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-brand {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: rgba(245,242,236,0.25);
+  text-transform: uppercase;
+}
+.footer-tagline {
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-style: italic;
+  color: rgba(245,242,236,0.2);
+}
+
+/* STEP BADGE ON NODE */
+.step-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  background: rgba(245,242,236,0.08);
+  color: rgba(245,242,236,0.4);
+}
+
+/* NEW BADGE */
+.new-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  background: var(--light);
+  color: var(--forest-deep);
+  padding: 1px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 5px;
+  font-weight: 500;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .header { padding: 20px 20px; }
+  .canvas { padding: 20px 16px 40px; }
+  .legend { padding: 16px 20px; }
+  .footer { padding: 16px 20px; flex-direction: column; gap: 8px; }
+  .node { min-width: 140px; }
+  .payment-flow { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-brand">
+    <span class="brand-tag">Construction Intelligence Platform</span>
+    <div class="brand-name">OBELIK <span>Workflow</span></div>
+  </div>
+  <div class="header-meta">
+    360° Construction Governance · Five-Actor Model<br>
+    Click any node to explore · obelik.com
+  </div>
+</header>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item l-owner">
+    <div class="legend-dot"></div>Owner / Client
+  </div>
+  <div class="legend-item l-arch">
+    <div class="legend-dot"></div>Architect / CA
+  </div>
+  <div class="legend-item l-contr">
+    <div class="legend-dot"></div>Contractor & Team
+  </div>
+  <div class="legend-item l-vendor">
+    <div class="legend-dot"></div>Vendor / Supplier
+  </div>
+  <div class="legend-item l-obelik">
+    <div class="legend-dot"></div>OBELIK Independent
+  </div>
+</div>
+
+<!-- MAIN CANVAS -->
+<div class="canvas">
+
+  <!-- PHASE 1: INITIATION -->
+  <div class="phase-label">01 · Initiation</div>
+  <div class="phase-row">
+    <div class="node n-owner node-xl" onclick="openModal('project-creation')">
+      <div class="node-num">Step 1</div>
+      <div class="node-actor">Owner / Client</div>
+      <div class="node-title">Project Creation</div>
+      <div class="node-sub">IFT · BOQ · Drawings · Specifications · Budget · Retention settings</div>
+    </div>
+    <div class="node n-arch node-md" onclick="openModal('arch-appointment')">
+      <div class="node-num">Step 1b <span class="new-badge">New</span></div>
+      <div class="node-actor">Owner → Architect</div>
+      <div class="node-title">Architect Appointment</div>
+      <div class="node-sub">Owner invites CA · Setup link generated · 72hr token</div>
+    </div>
+  </div>
+
+  <div class="arrows-row">
+    <div class="arrow-down" style="flex:3">
+      <div class="arrow-line"></div>
+      <div class="arrow-head"></div>
+      <div class="arrow-label">Open tender</div>
+    </div>
+    <div style="flex:1"></div>
+  </div>
+
+  <!-- PHASE 2: PROCUREMENT -->
+  <div class="phase-label">02 · Procurement & Bidding</div>
+  <div class="phase-row">
+    <div class="node n-owner node-md" onclick="openModal('bidding')">
+      <div class="node-num">Step 2</div>
+      <div class="node-actor">Owner / Client</div>
+      <div class="node-title">Open Bidding</div>
+      <div class="node-sub">Open tender · Digital audit trail · Timestamped submissions</div>
+    </div>
+    <div class="node n-platform node-md" onclick="openModal('evaluation')">
+      <div class="node-num">Step 3</div>
+      <div class="node-actor">Platform Engine</div>
+      <div class="node-title">Contractor Evaluation</div>
+      <div class="node-sub">Scored criteria · Max 100 pts · Technical · Financial · HSE · Experience</div>
+    </div>
+    <div class="node n-owner node-sm" onclick="openModal('shortlisting')">
+      <div class="node-num">Step 4a</div>
+      <div class="node-actor">Owner / Client</div>
+      <div class="node-title">Shortlisting <span class="new-badge">+Score</span></div>
+      <div class="node-sub">Top ranked · Invite sent · Score shared</div>
+    </div>
+    <div class="node n-rejected node-sm" onclick="openModal('rejected')">
+      <div class="node-num">Step 4b</div>
+      <div class="node-actor">System</div>
+      <div class="node-title">Not Qualified</div>
+      <div class="node-sub">Notified with score · Audit log retained</div>
+    </div>
+  </div>
+
+  <div class="arrows-row">
+    <div class="arrow-down" style="flex:1">
+      <div class="arrow-line"></div>
+      <div class="arrow-head"></div>
+      <div class="arrow-label">Award</div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="flex:1"></div>
+    <div style="flex:1"></div>
+  </div>
+
+  <!-- PHASE 3: AWARD -->
+  <div class="phase-label">03 · Award & Onboarding</div>
+  <div class="phase-row">
+    <div class="node n-owner node-md" onclick="openModal('award')">
+      <div class="node-num">Step 5</div>
+      <div class="node-actor">Owner / Client</div>
+      <div class="node-title">Contract Award</div>
+      <div class="node-sub">Formal selection · Contract PDF generated · Setup link sent</div>
+    </div>
+    <div class="node n-contr node-lg" onclick="openModal('onboarding')">
+      <div class="node-num">Step 6</div>
+      <div class="node-actor">Contractor & Team</div>
+      <div class="node-title">Auto-Onboarding</div>
+      <div class="node-sub">Compliance · Docs · Access · HSE induction gate · Role provisioning · Team invite</div>
+    </div>
+    <div class="node n-arch node-md" onclick="openModal('programme-review')">
+      <div class="node-num">Step 6b <span class="new-badge">New</span></div>
+      <div class="node-actor">Architect / CA</div>
+      <div class="node-title">Programme Review</div>
+      <div class="node-sub">Contractor submits programme · Architect reviews · Owner approves baseline</div>
+    </div>
+  </div>
+
+  <div style="margin: 12px 0 20px;">
+    <div class="section-divider">
+      <div class="divider-line"></div>
+      <div class="divider-label">Site Operations Layer</div>
+      <div class="divider-line"></div>
+    </div>
+  </div>
+
+  <!-- PHASE 4: SITE OPERATIONS -->
+  <div class="phase-label">04 · Site Operations</div>
+  <div class="site-ops-frame">
+    <div class="site-ops-label">Contractor-led · Real-time · Timestamped</div>
+
+    <div class="phase-row">
+      <div class="node n-contr node-md" onclick="openModal('site-monitoring')">
+        <div class="node-num">Step 7</div>
+        <div class="node-actor">Site Manager</div>
+        <div class="node-title">Site Monitoring</div>
+        <div class="node-sub">Site diary · Labour · Plant · Daily reports · Geo-tagged media</div>
+      </div>
+      <div class="node n-contr node-md" onclick="openModal('qaqc')">
+        <div class="node-num">Step 7a</div>
+        <div class="node-actor">Clerk of Works</div>
+        <div class="node-title">QA / QC</div>
+        <div class="node-sub">ITP sign-off · HOLD enforcement · NCR lifecycle · Toolbox Talk prerequisite</div>
+      </div>
+      <div class="node n-contr node-md" onclick="openModal('hse')">
+        <div class="node-num">Step 7b</div>
+        <div class="node-actor">HSE Officer</div>
+        <div class="node-title">HSE Management</div>
+        <div class="node-sub">Risk matrix · Toolbox talks · Incidents · Near misses · Induction records</div>
+      </div>
+    </div>
+
+    <div class="arrows-row" style="margin-top:8px;">
+      <div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+      <div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+      <div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+    </div>
+
+    <div class="phase-row">
+      <div class="node n-contr node-md" onclick="openModal('procurement-mr')">
+        <div class="node-num">Step 7c</div>
+        <div class="node-actor">Site Manager → QS</div>
+        <div class="node-title">Procurement — MR</div>
+        <div class="node-sub">SM raises MR · QS validates BOQ · Vendor invitation · Quote scoring · Award</div>
+      </div>
+      <div class="node n-vendor node-md" onclick="openModal('supply-chain')">
+        <div class="node-num">Step 7d</div>
+        <div class="node-actor">Vendor / Supplier</div>
+        <div class="node-title">Supply Chain</div>
+        <div class="node-sub">Quote submission · Award notification with score · Delivery confirmation</div>
+      </div>
+      <div class="node n-contr node-md" onclick="openModal('drawings-rfi')">
+        <div class="node-num">Step 7e <span class="new-badge">New</span></div>
+        <div class="node-actor">Contractor → Architect</div>
+        <div class="node-title">Drawings & RFIs</div>
+        <div class="node-sub">Contractor raises RFI · Routes to Architect first · Response back to site</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5: CONTRACT ADMINISTRATION -->
+  <div style="margin: 8px 0 20px;">
+    <div class="section-divider">
+      <div class="divider-line"></div>
+      <div class="divider-label">Contract Administration Layer</div>
+      <div class="divider-line"></div>
+    </div>
+  </div>
+
+  <div class="phase-label">05 · Contract Administration <span class="new-badge">New</span></div>
+  <div class="contract-frame">
+    <div class="contract-label">Architect / CA — Technical & Contractual Authority</div>
+
+    <div class="phase-row">
+      <div class="node n-arch node-md" onclick="openModal('rfi-response')">
+        <div class="node-num">CA-1 <span class="new-badge">New</span></div>
+        <div class="node-actor">Architect / CA</div>
+        <div class="node-title">RFI Response</div>
+        <div class="node-sub">Technical clarification · Revised drawing · Architect's Instruction if needed</div>
+      </div>
+      <div class="node n-arch node-md" onclick="openModal('change-events')">
+        <div class="node-num">CA-2 <span class="new-badge">New</span></div>
+        <div class="node-actor">Architect / CA</div>
+        <div class="node-title">Change Events & AI</div>
+        <div class="node-sub">Architect's Instructions · Change assessment · Routes to Owner above threshold</div>
+      </div>
+      <div class="node n-arch node-md" onclick="openModal('ipc-cert')">
+        <div class="node-num">CA-3 <span class="new-badge">New</span></div>
+        <div class="node-actor">Architect / CA</div>
+        <div class="node-title">IPC Certification</div>
+        <div class="node-sub">Receives AFP · Measures on site · Certifies interim payment · Issues IPC</div>
+      </div>
+      <div class="node n-arch node-md" onclick="openModal('snag')">
+        <div class="node-num">CA-4 <span class="new-badge">New</span></div>
+        <div class="node-actor">Architect / CA</div>
+        <div class="node-title">Snag List & PC</div>
+        <div class="node-sub">Pre-handover inspection · Snag list compiled · PC Certificate issued</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 6: INDEPENDENT INSPECTION -->
+  <div class="phase-label">06 · Independent Inspection <span class="new-badge">New</span></div>
+  <div class="phase-row">
+    <div class="node n-obelik node-lg" onclick="openModal('obelik-inspection')">
+      <div class="node-num">INS-1 <span class="new-badge">New</span></div>
+      <div class="node-actor">OBELIK Independent</div>
+      <div class="node-title">OBELIK Site Inspection</div>
+      <div class="node-sub">Scheduled from admin dashboard · Submitted via admin.obelik.com · SHA256 tamper-evident report · Routed to Owner, Architect, and Contractor simultaneously</div>
+    </div>
+    <div class="node n-arch node-md" onclick="openModal('arch-inspection')">
+      <div class="node-num">INS-2</div>
+      <div class="node-actor">Architect / CA</div>
+      <div class="node-title">Architect Inspection</div>
+      <div class="node-sub">Design compliance · Quality review · Findings to Owner and Contractor</div>
+    </div>
+    <div class="node n-owner node-md" onclick="openModal('owner-visit')">
+      <div class="node-num">INS-3</div>
+      <div class="node-actor">Owner / Client</div>
+      <div class="node-title">Owner Representative Visit</div>
+      <div class="node-sub">Client site visit · Narrative notes · Not shared with Contractor</div>
+    </div>
+  </div>
+
+  <!-- PHASE 7: MILESTONE VERIFICATION -->
+  <div class="arrows-row">
+    <div class="arrow-down" style="flex:2">
+      <div class="arrow-line" style="height:28px"></div>
+      <div class="arrow-head"></div>
+      <div class="arrow-label">OBELIK inspection informs milestone verification</div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="flex:1"></div>
+  </div>
+
+  <div class="phase-label">07 · Milestone Verification & Payment</div>
+  <div class="phase-row">
+    <div class="node n-contr node-md" onclick="openModal('afp')">
+      <div class="node-num">Step 8a</div>
+      <div class="node-actor">QS / Commercial</div>
+      <div class="node-title">Application for Payment</div>
+      <div class="node-sub">% complete · Site diary evidence · ITP PASS records · Retention calculated</div>
+    </div>
+    <div class="node n-arch node-md" onclick="openModal('ipc-flow')">
+      <div class="node-num">Step 8b <span class="new-badge">New</span></div>
+      <div class="node-actor">Architect / CA</div>
+      <div class="node-title">IPC Issued</div>
+      <div class="node-sub">Architect measures and certifies · OBELIK hold flag reviewed · Net certified amount</div>
+    </div>
+    <div class="node n-owner node-md" onclick="openModal('escrow-release')">
+      <div class="node-num">Step 8c</div>
+      <div class="node-actor">Owner / Client</div>
+      <div class="node-title">Escrow Release</div>
+      <div class="node-sub">Receives certified IPC · Releases net payable · Retention held in escrow</div>
+    </div>
+    <div class="node n-contr node-sm" onclick="openModal('wallet')">
+      <div class="node-num">Step 8d</div>
+      <div class="node-actor">Contractor</div>
+      <div class="node-title">Wallet Credit</div>
+      <div class="node-sub">Net certified to wallet · Withdraw to bank · Retention tracked</div>
+    </div>
+  </div>
+
+  <!-- PAYMENT FLOW VISUAL -->
+  <div style="margin: 20px 0 8px;">
+    <div class="payment-flow">
+      <div class="pf-node">
+        <div class="pf-icon" style="background:rgba(212,168,67,0.1)">🏢</div>
+        <div class="pf-label">Owner</div>
+        <div class="pf-sub">Pays contract funds into escrow</div>
+      </div>
+      <div class="pf-arrow-col">
+        <div class="h-line" style="width:40px;background:rgba(212,168,67,0.3)"></div>
+        <div class="pf-arrow-label">funds</div>
+      </div>
+      <div class="pf-node">
+        <div class="pf-icon" style="background:rgba(212,168,67,0.1)">🔒</div>
+        <div class="pf-label">OBELIK Escrow</div>
+        <div class="pf-sub">Held — milestone linked</div>
+      </div>
+      <div class="pf-arrow-col">
+        <div class="h-line" style="width:40px;background:rgba(45,106,159,0.4)"></div>
+        <div class="pf-arrow-label">on IPC</div>
+      </div>
+      <div class="pf-node">
+        <div class="pf-icon" style="background:rgba(45,106,159,0.1)">📋</div>
+        <div class="pf-label">Architect IPC</div>
+        <div class="pf-sub">Certifies — measures work</div>
+      </div>
+      <div class="pf-arrow-col">
+        <div class="h-line" style="width:40px;background:rgba(212,168,67,0.3)"></div>
+        <div class="pf-arrow-label">release</div>
+      </div>
+      <div class="pf-node">
+        <div class="pf-icon" style="background:rgba(74,158,118,0.1)">💼</div>
+        <div class="pf-label">Contractor Wallet</div>
+        <div class="pf-sub">Net payable credited</div>
+      </div>
+      <div class="pf-arrow-col">
+        <div class="h-line" style="width:40px;background:rgba(74,158,118,0.3)"></div>
+        <div class="pf-arrow-label">withdraw</div>
+      </div>
+      <div class="pf-node">
+        <div class="pf-icon" style="background:rgba(74,158,118,0.1)">🏦</div>
+        <div class="pf-label">Firm Bank</div>
+        <div class="pf-sub">1–3 business days</div>
+      </div>
+      <div class="pf-arrow-col">
+        <div class="h-line" style="width:40px;background:rgba(107,63,160,0.4)"></div>
+        <div class="pf-arrow-label">vendor pay</div>
+      </div>
+      <div class="pf-node">
+        <div class="pf-icon" style="background:rgba(107,63,160,0.1)">📦</div>
+        <div class="pf-label">Vendor</div>
+        <div class="pf-sub">Delivery-verified supply payment</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 8: RETENTION -->
+  <div class="phase-label" style="margin-top:20px;">08 · Retention, Handover & Completion <span class="new-badge">New</span></div>
+  <div class="phase-row">
+    <div class="node n-arch node-md" onclick="openModal('retention-engine')">
+      <div class="node-num">Step 9a <span class="new-badge">New</span></div>
+      <div class="node-actor">Architect / CA</div>
+      <div class="node-title">Retention Engine</div>
+      <div class="node-sub">5% withheld per IPC · Cap tracked · Half released at PC · Final at DLP</div>
+    </div>
+    <div class="node n-arch node-md" onclick="openModal('handover')">
+      <div class="node-num">Step 9b <span class="new-badge">New</span></div>
+      <div class="node-actor">Architect → Owner</div>
+      <div class="node-title">Practical Completion</div>
+      <div class="node-sub">Snag list closed · PC Certificate issued · Owner accepts handover · DLP begins</div>
+    </div>
+    <div class="node n-arch node-md" onclick="openModal('dlp')">
+      <div class="node-num">Step 9c <span class="new-badge">New</span></div>
+      <div class="node-actor">Architect → Owner</div>
+      <div class="node-title">DLP & Final Certificate</div>
+      <div class="node-sub">Defects remedied · DLP expires · Architect issues Final Certificate · Retention released</div>
+    </div>
+    <div class="node n-obelik node-md" onclick="openModal('audit')">
+      <div class="node-num">Step 9d <span class="new-badge">New</span></div>
+      <div class="node-actor">OBELIK Platform</div>
+      <div class="node-title">Audit Trail & Archive</div>
+      <div class="node-sub">Full append-only audit log · All actors · All actions · Tamper-evident records</div>
+    </div>
+  </div>
+
+</div><!-- /canvas -->
+
+<!-- FOOTER -->
+<footer class="footer">
+  <span class="footer-brand">OBELIK Technologies Ltd · obelik.com · 2026</span>
+  <span class="footer-tagline">Transforming Construction Intelligence Across Africa</span>
+</footer>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeOnOverlay(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-tag" id="m-tag"></div>
+    <div class="modal-title" id="m-title"></div>
+    <div class="modal-actor" id="m-actor"></div>
+    <div class="modal-divider"></div>
+    <div class="modal-body" id="m-body"></div>
+    <ul class="modal-steps" id="m-steps"></ul>
+    <div class="modal-tags" id="m-tags"></div>
+  </div>
+</div>
+
+<script>
+const MODALS = {
+  'project-creation': {
+    tag: 'Phase 01 · Initiation',
+    title: 'Project <em>Creation</em>',
+    actor: { label: 'Owner / Client', bg: 'rgba(212,168,67,0.15)', color: '#D4A843' },
+    body: 'The Owner establishes the project on OBELIK, defining all contractual parameters that govern every subsequent workflow.',
+    steps: [
+      'Publish Invitation to Tender (IFT) with full project scope',
+      'Upload Bill of Quantities (BOQ) — becomes the procurement benchmark',
+      'Upload design drawings and technical specifications',
+      'Set contract budget and milestone payment schedule',
+      'Configure retention rate (default 5%) and retention cap',
+      'Configure change order approval threshold',
+      'Invite Architect / CA to administer the contract'
+    ],
+    tags: ['IFT', 'BOQ', 'Drawings', 'Budget', 'Retention Settings']
+  },
+  'arch-appointment': {
+    tag: 'Phase 01 · New in this version',
+    title: 'Architect <em>Appointment</em>',
+    actor: { label: 'Owner → Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'The Architect is appointed by the Owner as the technical authority and Contract Administrator. They sit between Owner and Contractor, certifying work and responding to technical queries.',
+    steps: [
+      'Owner invites Architect from project setup in Owner Portal',
+      'System generates one-time password setup token (72hr expiry)',
+      'Appointment email sent: project details, responsibilities, setup link',
+      'URL: app.obelik.com/architect/setup?token=[TOKEN]',
+      'Architect sets password → auto-login → Architect Portal',
+      'Architect can invite additional team members from their firm',
+      'Architect login tab: "Architect / CA" on obelik.com'
+    ],
+    tags: ['One-Time Link', '72hr Expiry', 'Auto-Provisioning', 'Contract Admin']
+  },
+  'bidding': {
+    tag: 'Phase 02 · Procurement',
+    title: 'Open <em>Bidding</em>',
+    actor: { label: 'Owner / Client', bg: 'rgba(212,168,67,0.15)', color: '#D4A843' },
+    body: 'Contractors submit bids through OBELIK\'s digital tender system. All submissions are timestamped, creating an immutable audit trail.',
+    steps: [
+      'IFT published on OBELIK platform',
+      'Contractors register and submit bids digitally',
+      'Each submission timestamped and cryptographically logged',
+      'Bid documents: technical proposal, financial, HSE record, experience',
+      'Submission deadline enforced by system — no late bids accepted'
+    ],
+    tags: ['Digital Audit', 'Timestamped', 'Open Tender', 'obelik.com']
+  },
+  'evaluation': {
+    tag: 'Phase 02 · Evaluation Engine',
+    title: 'Contractor <em>Evaluation</em>',
+    actor: { label: 'Platform Engine', bg: 'rgba(245,242,236,0.08)', color: 'rgba(245,242,236,0.6)' },
+    body: 'OBELIK\'s scoring engine evaluates all bids against weighted criteria, producing an objective ranked list for Owner review.',
+    steps: [
+      'Technical Capability: 25 points',
+      'Financial Strength: 20 points',
+      'Relevant Experience: 20 points',
+      'Methodology & Programme: 20 points',
+      'HSE Record: 15 points',
+      'Total: 100 points maximum',
+      'Ranked list presented to Owner with full score breakdown'
+    ],
+    tags: ['Max 100 pts', 'Weighted Criteria', 'Objective Ranking', 'Audit Trail']
+  },
+  'shortlisting': {
+    tag: 'Phase 02 · Shortlisting',
+    title: 'Shortlisting <em>& Score Share</em>',
+    actor: { label: 'Owner / Client', bg: 'rgba(212,168,67,0.15)', color: '#D4A843' },
+    body: 'Top-ranked contractors are invited to interview. All contractors — shortlisted and rejected — receive their evaluation score and the evaluator\'s notes.',
+    steps: [
+      'Owner selects shortlisted contractors from ranked list',
+      'Shortlisted contractors notified with their full score breakdown',
+      'Evaluator notes included (required — minimum 20 chars)',
+      'Interview details communicated separately',
+      'Rejected contractors also receive their score and notes',
+      'All notification emails use absolute OBELIK logo URL'
+    ],
+    tags: ['Score Transparency', 'Evaluator Notes', 'Both Parties Notified']
+  },
+  'rejected': {
+    tag: 'Phase 02 · Outcome',
+    title: 'Not <em>Qualified</em>',
+    actor: { label: 'System', bg: 'rgba(192,57,43,0.15)', color: '#F5A8A0' },
+    body: 'Unsuccessful contractors are notified with their evaluation score and feedback. The audit log retains all bid data for the project record.',
+    steps: [
+      'Email sent: "Bid outcome — [Project Name]"',
+      'Score table included: all five criteria + overall',
+      'Evaluator notes included verbatim',
+      'Encouragement to apply for future opportunities',
+      'Audit log entry retained permanently'
+    ],
+    tags: ['Score Shared', 'Evaluator Notes', 'Audit Retained']
+  },
+  'award': {
+    tag: 'Phase 03 · Award',
+    title: 'Contract <em>Award</em>',
+    actor: { label: 'Owner / Client', bg: 'rgba(212,168,67,0.15)', color: '#D4A843' },
+    body: 'Formal contract award triggers automatic account creation, contract PDF generation, and the password setup email — all within seconds of the Owner confirming.',
+    steps: [
+      'Owner confirms award in Owner Portal',
+      'Contract PDF auto-generated: cover, terms, milestones, signatories',
+      'PDF filed in project Documents → Contracts & Agreements',
+      'Contractor account created: role = firm_account',
+      'One-time password setup token generated (72hr)',
+      'Award email sent with: project details, next steps, PDF attachment, setup link',
+      'Setup URL: app.obelik.com/setup-password?token=[TOKEN]',
+      'Architect notified of contractor appointment'
+    ],
+    tags: ['Auto-Provisioning', 'Contract PDF', '72hr Token', 'obelik.com']
+  },
+  'onboarding': {
+    tag: 'Phase 03 · Onboarding',
+    title: 'Auto <em>Onboarding</em>',
+    actor: { label: 'Contractor & Team', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'On first login, the Contractor firm sets their password and immediately accesses the full Contractor Portal. They then invite team members — each of whom must complete an HSE induction before accessing any module.',
+    steps: [
+      'Firm Account sets password → auto-login → Contractor Portal',
+      'Countersigns contract digitally in Documents module',
+      'Invites team members: email + role assignment',
+      'Invitee receives personalised invite email with setup link',
+      'HARD GATE: HSE induction checklist must be completed before portal access',
+      'Induction timestamped and logged in HSE → Induction Records',
+      'Role-filtered sidebar unlocked after induction',
+      'Firm Account notified when each member is active'
+    ],
+    tags: ['HSE Hard Gate', 'Role Filtering', 'Auto-Provisioning', '5 Roles']
+  },
+  'programme-review': {
+    tag: 'Phase 03 · New in this version',
+    title: 'Programme <em>Review</em>',
+    actor: { label: 'Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'The Contractor submits their programme for formal review. The Architect assesses technical adequacy. The Owner approves the baseline — locking it as the reference for the entire project.',
+    steps: [
+      'Contractor submits programme via Contractor Portal → Programme Setup',
+      'Status: "Pending Architect Review"',
+      'Architect reviews: sequence, logic, resource loading, milestone dates',
+      'Architect: Approve / Request Revision / Reject (with note)',
+      'If approved: Owner Portal shows Architect recommendation',
+      'Owner confirms → programme locked as baseline',
+      'Baseline locked — deviation triggers Change Order workflow',
+      'S-curve progress tracking begins against baseline'
+    ],
+    tags: ['Baseline Lock', 'Architect Review', 'Owner Approval', 'S-Curve']
+  },
+  'site-monitoring': {
+    tag: 'Phase 04 · Operations',
+    title: 'Site <em>Monitoring</em>',
+    actor: { label: 'Site Manager', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'The Site Manager submits structured daily reports that form the evidentiary backbone of payment claims and project records.',
+    steps: [
+      'Daily Report form: 7 sections (identity, weather, labour, plant, materials, works, safety)',
+      'Geo-tagged photos: GPS coordinates extracted from EXIF',
+      'Geo-tagged videos: audio preserved — never -an flag in ffmpeg',
+      'Pre-signed S3 URLs: generated server-side on every fetch',
+      'Submit to Firm Account: status Draft → Submitted',
+      'Submitted reports auto-attach to payment claims for the period',
+      'All reports visible to Firm Account with submitter attribution'
+    ],
+    tags: ['Geo-tagged', 'Video + Audio', 'Daily Reports', 'Claim Evidence']
+  },
+  'qaqc': {
+    tag: 'Phase 04 · Quality',
+    title: 'QA / <em>QC</em>',
+    actor: { label: 'Clerk of Works', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'The Clerk of Works is the quality sign-off authority. ITP HOLD enforcement is a hard system block — not a label. NCRs follow a full lifecycle to closure.',
+    steps: [
+      'ITP items: PASS / HOLD / FAIL restricted to Clerk of Works + Firm Account',
+      'Enforced at three layers: frontend, API (403), database row-level policy',
+      'HOLD: linked WBS tasks blocked automatically — cannot progress',
+      'Toolbox Talk prerequisite: ITP item cannot PASS until required TT logged',
+      'NCR lifecycle: Raised → Assigned → Root Cause → Corrective Action → Verification → Closed',
+      'OBELIK inspection non-conforming items auto-create ITP flags and NCRs',
+      'All sign-offs: named, dated, role-stamped in audit trail'
+    ],
+    tags: ['3-Layer Enforcement', 'HOLD Blocks WBS', 'NCR Lifecycle', 'Audit Stamped']
+  },
+  'hse': {
+    tag: 'Phase 04 · Safety',
+    title: 'HSE <em>Management</em>',
+    actor: { label: 'HSE Officer', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'The HSE Officer owns the complete safety record for the project. The Risk Matrix is a proper colour-coded 5×5 grid — not a list.',
+    steps: [
+      'Risk Matrix: 5×5 grid, L×C scoring, green/amber/red bands',
+      'Toolbox Talks: linked to ITP items as prerequisites',
+      'Incident Log: full structured form with all required fields',
+      'Near Miss form: hazard, action, prevention recommendation',
+      'Induction Records: per member, timestamped, viewable in module',
+      'LTI-Free Days: live counter from project start',
+      'OBELIK inspection HSE items auto-create HSE module entries'
+    ],
+    tags: ['5×5 Risk Matrix', 'TT Prerequisites', 'LTI Counter', 'Induction Records']
+  },
+  'procurement-mr': {
+    tag: 'Phase 04 · Procurement',
+    title: 'Procurement <em>MR Workflow</em>',
+    actor: { label: 'Site Manager → QS / Commercial', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'Site Manager raises the MR. QS validates against BOQ and owns all commercial decisions. Manager/Owner only involved for Change Orders.',
+    steps: [
+      'SM raises MR: BOQ Item Code is a SEARCHABLE DROPDOWN (not free text)',
+      'Status: "Pending QS Review" — QS notified',
+      'QS validates against BOQ: within allowance → approves, proceeds',
+      'Out-of-BOQ or excess quantity → Change Order → Owner Portal',
+      'QS invites vendors: shareable link + QR code + registry + Procurement Portal',
+      'Quote comparison: BOQ rate reference column, >10% variance flagged amber',
+      'QS scores: price (auto) + delivery + compliance, weighted total',
+      'Award: QS or Owner depending on routing rules',
+      'Delivery: SM confirms, QS authorises vendor payment from escrow'
+    ],
+    tags: ['BOQ Dropdown', 'QS Owns Commercial', 'Three Invite Methods', '7 Stages']
+  },
+  'supply-chain': {
+    tag: 'Phase 04 · Vendors',
+    title: 'Supply Chain <em>Traceability</em>',
+    actor: { label: 'Vendor / Supplier', bg: 'rgba(107,63,160,0.15)', color: '#B07BF0' },
+    body: 'Vendors receive procurement opportunities via shareable link, direct invite, or the OBELIK Procurement Portal marketplace. All receive their quote score after award.',
+    steps: [
+      'Method A: Shareable link — obelik.com/vendor/invite?ref=...&mr=...&exp=...',
+      'Method B: Direct registry invite (search by name or CAC number)',
+      'Method C: OBELIK Procurement Portal — platform-wide marketplace',
+      'Quote form: unit rate, lead time, validity, supporting documents',
+      'Deadline enforced: no late submissions accepted',
+      'Score email sent to ALL vendors post-award (awarded + non-awarded)',
+      'Delivery confirmation from vendor portal → SM verifies → QS authorises',
+      'Vendor payment: delivery-verified, released from escrow'
+    ],
+    tags: ['3 Invite Methods', 'Score Transparency', 'Delivery Verified', 'CAC Verified']
+  },
+  'drawings-rfi': {
+    tag: 'Phase 04 · New in this version',
+    title: 'Drawings <em>& RFIs</em>',
+    actor: { label: 'Contractor → Architect', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'RFIs are raised by the Contractor and routed to the Architect first. The Owner never responds to technical RFIs directly — they are only notified if an RFI has cost or time impact.',
+    steps: [
+      'Contractor raises RFI in Drawings module → routes to Architect Portal',
+      'Owner portal: RFI visible as READ-ONLY (no respond button)',
+      'Architect responds: clarification / revised drawing / Architect\'s Instruction',
+      'Response appears in Contractor portal → Drawing module',
+      'If AI raised: Change Event created, Owner notified of cost/time impact',
+      'Drawing transmittals: Architect issues to Contractor with revision control',
+      'Contractor acknowledges receipt of each transmittal'
+    ],
+    tags: ['Architect First', 'Owner Read-Only', 'AI From RFI', 'Transmittals']
+  },
+  'rfi-response': {
+    tag: 'CA Layer · New in this version',
+    title: 'RFI <em>Response</em>',
+    actor: { label: 'Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'The Architect is the primary technical respondent to all RFIs. No technical query should be answered by the Owner directly.',
+    steps: [
+      'All RFIs from Contractor land in Architect Portal → RFIs section',
+      'Architect notified immediately: email + in-app',
+      'Response types: Clarification (text) / Revised drawing / Architect\'s Instruction',
+      'Revised drawing: uploaded, revision letter incremented, transmittal issued',
+      'AI from RFI: change assessment begins, contractor must comply then price',
+      'Response delivered to Contractor Portal → RFIs → [ref] → Response',
+      'Owner notified ONLY if cost or time impact exists'
+    ],
+    tags: ['Architect First', 'Three Response Types', 'AI Trigger', 'Owner Notified if Impact']
+  },
+  'change-events': {
+    tag: 'CA Layer · New in this version',
+    title: "Architect's <em>Instructions & Change Events</em>",
+    actor: { label: 'Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: "Architect's Instructions are the formal mechanism for directing changes. All change orders originate from either a Contractor request, an AI, or an Owner-instructed change — assessed by the Architect.",
+    steps: [
+      'Source A: Contractor raises Change Request (variation claim)',
+      'Source B: Architect issues AI (design change, technical direction)',
+      'Source C: Owner requests change from Architect (not directly to Contractor)',
+      'Architect assesses: scope, time impact, cost impact, recommendation',
+      'Below threshold: Architect approves directly',
+      'Above threshold: routes to Owner Portal for approval',
+      'Owner approves → CO raised, Revised Contract Sum updated',
+      'No "+ New Change Order" button in Owner Portal'
+    ],
+    tags: ['Three Sources', 'Architect Assesses', 'Threshold Routing', 'Revised Contract Sum']
+  },
+  'ipc-cert': {
+    tag: 'CA Layer · New in this version',
+    title: 'IPC <em>Certification</em>',
+    actor: { label: 'Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'The Architect measures and certifies what work has actually been done. The Owner receives the certified amount — they do not determine it themselves.',
+    steps: [
+      'Contractor submits Application for Payment (AFP) via Contractor Portal',
+      'AFP routes to Architect Portal → IPC Certification (not to Owner directly)',
+      'Owner portal: shows "Pending Architect Certification" — no release button',
+      'OBELIK inspection hold flag: amber banner if payment hold recommended',
+      'Architect reviews: diary reports, ITP PASS records, site inspection reports, photos',
+      'Architect enters: certified amount, variance from claimed (with reason), certification note',
+      'Retention deducted automatically from project_retention_settings (not hardcoded)',
+      'IPC issued → appears in Owner Portal → Release Payment button now active'
+    ],
+    tags: ['AFP → IPC → Release', 'Architect Measures', 'OBELIK Hold Flag', 'Retention Engine']
+  },
+  'snag': {
+    tag: 'CA Layer · New in this version',
+    title: 'Snag List <em>& Practical Completion</em>',
+    actor: { label: 'Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'The Architect compiles the snag list after pre-handover inspection. Only when all items are accepted does the Architect issue the Practical Completion Certificate.',
+    steps: [
+      'Architect conducts pre-handover inspection',
+      'Snag list compiled in Architect Portal: location, description, severity, photo',
+      'Issued to Contractor — appears in Contractor Portal',
+      'Contractor remedies defects, marks as remedied with evidence',
+      'Architect re-inspects each item: Accepted / Rejected',
+      'When all items accepted: PC Certificate enabled',
+      'PC Certificate issued → Owner Portal → Handover tab',
+      'Owner accepts handover → half-retention released → DLP starts'
+    ],
+    tags: ['Architect Compiles', 'Not Owner', 'PC Certificate', 'Half Retention Release']
+  },
+  'obelik-inspection': {
+    tag: 'Phase 06 · New in this version',
+    title: 'OBELIK <em>Independent Inspection</em>',
+    actor: { label: 'OBELIK Independent', bg: 'rgba(26,122,122,0.15)', color: '#5CC8C8' },
+    body: 'OBELIK conducts independent site inspections as a construction intelligence service. Reports are submitted via admin.obelik.com, reviewed internally, then published simultaneously to all three portals. Reports are tamper-evident via SHA256 hash.',
+    steps: [
+      'Scheduled from admin.obelik.com (internal OBELIK staff only)',
+      'Inspector submits draft: scope, works, quality items, HSE, programme, photos',
+      'OBELIK lead reviews and approves before publication',
+      'On publish: Owner Portal (blue "OBELIK Verified" badge)',
+      'On publish: Architect Portal (read-only, can add response note)',
+      'On publish: Contractor Portal → non-conforming/critical items → Issues & Risks',
+      'Payment hold recommendation: AFP in Architect Portal flagged amber',
+      'SHA256 hash generated at publish — tamper-evident, legally credible',
+      'PDF auto-filed in Owner Documents → Inspection Reports'
+    ],
+    tags: ['admin.obelik.com', 'SHA256 Hash', 'Three Portals', 'Payment Hold Flag', 'Tamper-Evident']
+  },
+  'arch-inspection': {
+    tag: 'Phase 06 · Inspection',
+    title: 'Architect <em>Inspection</em>',
+    actor: { label: 'Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'Architect conducts their own site inspections for design compliance and quality. Reports route to Owner portal and flagged items to Contractor.',
+    steps: [
+      'Architect schedules and conducts inspection',
+      'Report filed in Architect Portal → Site Inspections',
+      'Owner Portal: green "Architect Inspection" badge',
+      'Contractor: flagged items appear in Issues & Risks',
+      'Architect can reference OBELIK reports for context'
+    ],
+    tags: ['Design Compliance', 'Quality Review', 'Routing to Both Portals']
+  },
+  'owner-visit': {
+    tag: 'Phase 06 · Inspection',
+    title: 'Owner Representative <em>Visit</em>',
+    actor: { label: 'Owner / Client', bg: 'rgba(212,168,67,0.15)', color: '#D4A843' },
+    body: 'The Owner\'s representative can log site visits as a client record. These are NOT formal inspections and are not shared with the Contractor.',
+    steps: [
+      'Owner logs visit: date, attendees, narrative observations, photos',
+      'Grey "Owner Visit" badge in Site Inspections tab',
+      'Visible to: Owner and Architect only',
+      'NOT shared with Contractor — commercially sensitive',
+      'NOT a formal inspection report — clearly labelled'
+    ],
+    tags: ['Owner Only', 'Not Formal Inspection', 'Not Shared to Contractor']
+  },
+  'afp': {
+    tag: 'Phase 07 · Payment',
+    title: 'Application <em>for Payment</em>',
+    actor: { label: 'QS / Commercial', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'The QS owns payment claim submission. No bank details are entered — funds flow to the OBELIK Escrow Wallet. The claim amount is derived from milestone × % complete, not manually typed.',
+    steps: [
+      'Step 1: Select milestone — each shows budget, certified, available to claim',
+      'Step 2: % complete slider — gross/retention/net calculated live',
+      'Retention rate: from project_retention_settings (never hardcoded)',
+      'Site diary reports auto-attached (submitted, not draft)',
+      'ITP PASS records auto-attached for milestone WBS activities',
+      'HOLD items flagged amber: "Payment may be queried"',
+      'Step 3: Review — statement: "No bank details required — funds to Escrow Wallet"',
+      'Submit → AFP routes to Architect Portal for IPC certification'
+    ],
+    tags: ['No Bank Details', 'Derived Amount', 'Auto Evidence', 'Routes to Architect']
+  },
+  'ipc-flow': {
+    tag: 'Phase 07 · Payment',
+    title: 'IPC <em>Issued</em>',
+    actor: { label: 'Architect / CA', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'The Architect measures and certifies the interim payment. The Owner only sees and releases the certified amount — they cannot set it.',
+    steps: [
+      'AFP received in Architect Portal → IPC Certification',
+      'OBELIK hold flag reviewed (amber banner if payment hold recommended)',
+      'Architect enters certified amount (may differ from claimed)',
+      'Variance recorded with mandatory reason if different',
+      'Retention auto-deducted per project settings',
+      'IPC reference: IPC-{PROJECT_REF}-{SEQUENCE}',
+      'IPC issued → Owner Portal → release button now active',
+      'Contractor notified: "IPC certified for ₦[amount]. Owner releasing payment."'
+    ],
+    tags: ['IPC-{REF}-{SEQ}', 'Architect Measures', 'Retention Engine', 'Owner Releases']
+  },
+  'escrow-release': {
+    tag: 'Phase 07 · Payment',
+    title: 'Escrow <em>Release</em>',
+    actor: { label: 'Owner / Client', bg: 'rgba(212,168,67,0.15)', color: '#D4A843' },
+    body: 'The Owner receives the Architect-certified IPC and releases payment from escrow. They cannot override the certified amount without raising a dispute.',
+    steps: [
+      'Owner Portal → Payment Certifications → IPC appears with release button',
+      'Owner sees: gross claimed, gross certified, Architect\'s note, retention, net payable',
+      'Release Payment → escrow release triggered',
+      'Dispute: dispute note required → Architect notified for re-assessment',
+      'Net certified credited to Contractor Wallet',
+      'Retention withheld: logged in retention_ledger',
+      'Transaction logged in Escrow Wallet → Recent Transactions',
+      'Vendor payment: QS authorises, released from escrow upon delivery confirmation'
+    ],
+    tags: ['Certified IPC Only', 'Dispute Option', 'Retention Ledger', 'Vendor Payment']
+  },
+  'wallet': {
+    tag: 'Phase 07 · Payment',
+    title: 'Contractor <em>Wallet</em>',
+    actor: { label: 'Firm Account (Contractor)', bg: 'rgba(74,158,118,0.15)', color: '#4A9E76' },
+    body: 'The Contractor Wallet is the Firm Account\'s financial hub. Only the Firm Account can withdraw to bank.',
+    steps: [
+      'Available Escrow Balance: net certified amounts credited',
+      'Retention held: separately tracked, not available for withdrawal',
+      'Retention Panel: withheld / released / currently held / release schedule',
+      'Withdraw to Bank: Firm Account only (1–3 business days)',
+      'QS: can view full wallet — withdraw button locked with tooltip',
+      'Site Manager: sees balance card only',
+      'HSE Officer / Clerk of Works: Escrow not in DOM',
+      'Retention statement PDF: downloadable — bankable document for financing'
+    ],
+    tags: ['Firm Account Only Withdrawal', 'Retention Ledger', 'Role-Filtered View']
+  },
+  'retention-engine': {
+    tag: 'Phase 08 · New in this version',
+    title: 'Retention <em>Engine</em>',
+    actor: { label: 'Architect / CA + Platform', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'Retention is deducted automatically on every certified IPC. The rate is always from project settings — never hardcoded. The cap prevents indefinite deduction.',
+    steps: [
+      'Rate: from project_retention_settings.retention_rate (default 5%, configurable)',
+      'Cap: total retention withheld cannot exceed retention_cap_pct × contract sum',
+      'Per IPC: gross × rate deducted, balance held in escrow as retention',
+      'Cap reached: subsequent IPCs paid in full (zero further deduction)',
+      'Mid-payment cap: partial deduction to reach cap, remainder paid in full',
+      'Half release: on PC Certificate — 50% of retention released to wallet',
+      'Final release: on DLP expiry + Final Certificate — remaining 50%',
+      'Open defects at DLP: release blocked until all defects closed'
+    ],
+    tags: ['Configurable Rate', 'Cap Logic', 'Half at PC', 'Final at DLP', 'Never Hardcoded']
+  },
+  'handover': {
+    tag: 'Phase 08 · New in this version',
+    title: 'Practical <em>Completion</em>',
+    actor: { label: 'Architect → Owner', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'Practical Completion is the formal project handover event. It is certified by the Architect — not declared by the Contractor or Owner.',
+    steps: [
+      'Snag list: all items accepted by Architect',
+      'Architect issues Practical Completion Certificate',
+      'PC Certificate appears in Owner Portal → Handover tab',
+      'Handover documentation pack uploaded (O&M, as-builts, warranties, test certs)',
+      'Owner formally accepts handover: "Accept Handover" button',
+      'Half-retention (50%) automatically released to Contractor Wallet',
+      'DLP countdown begins from PC date (default 12 months, configurable)',
+      'DLP expiry date auto-calculated and shown in Escrow Wallet Retention Panel'
+    ],
+    tags: ['Architect Issues PC', 'Half Retention Released', 'DLP Starts', 'Formal Acceptance']
+  },
+  'dlp': {
+    tag: 'Phase 08 · New in this version',
+    title: 'DLP & <em>Final Certificate</em>',
+    actor: { label: 'Architect → Owner', bg: 'rgba(45,106,159,0.15)', color: '#7BB8F0' },
+    body: 'The Defects Liability Period is the final contractual phase. The Architect issues the Final Certificate when all defects are closed, triggering final retention release.',
+    steps: [
+      'DLP runs from PC date + configured months (default 12)',
+      'Defects reported during DLP logged in Issues & Risks',
+      'Contractor remedies defects, Owner/Architect confirms closure',
+      'DLP expiry: all defects closed → Architect issues Final Certificate',
+      'Final Certificate → Owner confirms → remaining retention released',
+      'Defects outstanding at DLP expiry: release blocked, parties notified',
+      'Platform logs DLP status, expiry date, open defect count in Escrow Wallet',
+      'Retention statement PDF updated with full release record'
+    ],
+    tags: ['12-Month Default', 'Defect-Linked Release', 'Final Certificate', 'Full Audit']
+  },
+  'audit': {
+    tag: 'Phase 08 · Platform',
+    title: 'Audit Trail <em>& Archive</em>',
+    actor: { label: 'OBELIK Platform', bg: 'rgba(26,122,122,0.15)', color: '#5CC8C8' },
+    body: 'Every action across all five actor portals is logged in an immutable, append-only audit trail. No actor can edit or delete log entries.',
+    steps: [
+      'Every write action: user_id, full_name, role, portal designation, project_id',
+      'Action type, table, record_id, description, timestamp_utc, IP address',
+      'Portal designation logged: "Contractor Portal — QS / Commercial"',
+      'OBELIK inspection reports: SHA256 tamper-evident hash at publish',
+      'Accessible to: Firm Account (their project), Owner (all their projects), OBELIK Admin (all)',
+      'admin.obelik.com: full audit read across entire platform',
+      'Any attempt to alter: logged as security event',
+      'Archive: documents, media, reports retained per industry standard'
+    ],
+    tags: ['Append-Only', 'SHA256', 'Five Portals', 'admin.obelik.com', 'Tamper-Evident']
+  }
+}
+
+function openModal(id) {
+  const d = MODALS[id]
+  if (!d) return
+  document.getElementById('m-tag').textContent = d.tag
+  document.getElementById('m-title').innerHTML = d.title
+  const actorEl = document.getElementById('m-actor')
+  actorEl.textContent = d.actor.label
+  actorEl.style.background = d.actor.bg
+  actorEl.style.color = d.actor.color
+  document.getElementById('m-body').textContent = d.body
+  const stepsEl = document.getElementById('m-steps')
+  stepsEl.innerHTML = d.steps.map((s, i) =>
+    `<li><span class="step-n" style="background:rgba(245,242,236,0.08);color:rgba(245,242,236,0.45)">${i+1}</span><span>${s}</span></li>`
+  ).join('')
+  const tagsEl = document.getElementById('m-tags')
+  tagsEl.innerHTML = d.tags.map(t =>
+    `<span class="modal-tag-pill" style="background:rgba(245,242,236,0.06);color:rgba(245,242,236,0.5)">${t}</span>`
+  ).join('')
+  document.getElementById('modal').classList.add('active')
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active')
+}
+
+function closeOnOverlay(e) {
+  if (e.target === document.getElementById('modal')) closeModal()
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal()
+})
+</script>
+</body>
+</html>
